@@ -20,11 +20,6 @@ func GetRoom(code string) (*Room, bool) {
 	}()
 	r, ok := rooms[code]
 	return r, ok
-
-	// if ok {
-	// 	return r
-	// }
-	// return createRoom(code)
 }
 
 func CreateRoom(code string) *Room {
@@ -34,7 +29,6 @@ func CreateRoom(code string) *Room {
 	}()
 
 	nr := New(code)
-	// go nr.Run()
 	rooms[code] = nr
 	return nr
 }
@@ -44,11 +38,7 @@ func (r *Room) JoinUser(u *user.User) {
 	r.Users = append(r.Users, u)
 	joinMsg := fmt.Sprint("[", u.Name, " joined the room]")
 	fmt.Println(joinMsg)
-	// now := time.Now()
-	// nowStr := fmt.Sprintf("%v:%v:%v", now.Hour(), now.Minute(), now.Second())
-	for _, us := range r.Users {
-		us.MsgBox <- fmt.Sprintf("%v - %v", date.NowDateAndTimeBR(), joinMsg)
-	}
+	r.WriteMsgToUsers(fmt.Sprintf("%v - %v", date.NowDateAndTimeBR(), joinMsg))
 	r.mu.Unlock()
 }
 
@@ -56,20 +46,15 @@ func (r *Room) DisconnectUser(u *user.User) {
 	r.mu.Lock()
 	leftMsg := fmt.Sprint("[", u.Name, " left the room]")
 	fmt.Println(leftMsg)
-	// now := time.Now()
-	// nowStr := fmt.Sprintf("%v:%v:%v", now.Hour(), now.Minute(), now.Second())
-	for _, us := range r.Users {
-		us.MsgBox <- fmt.Sprintf("%v - %v", date.NowDateAndTimeBR(), leftMsg)
-	}
 	idx := user.GetIndex(r.Users, u)
-	// r.Users = append(r.Users[:idx], r.Users[idx+1:]...)
-	slices.Delete(r.Users, idx, idx+1)
+	r.Users = slices.Delete(r.Users, idx, idx+1)
+	r.WriteMsgToUsers(fmt.Sprintf("%v - %v", date.NowDateAndTimeBR(), leftMsg))
 	r.mu.Unlock()
+	if len(r.Users) == 0 {
+		delete(rooms, r.Code)
+		r = nil
+	}
 }
-
-// func readMsgFromUser(r *Room) {
-
-// }
 
 func (r *Room) WriteMsgToUsers(m string) {
 	for _, u := range r.Users {
